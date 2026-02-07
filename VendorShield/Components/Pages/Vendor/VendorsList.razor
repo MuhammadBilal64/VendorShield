@@ -1,0 +1,139 @@
+﻿@page "/vendors"
+@using VendorShield.IService
+@using VendorShield.Model
+@inject IVendorService VendorService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+<h3 class="page-title mb-4">Vendors</h3>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="fw-semibold">Vendor List</div>
+            <button class="btn btn-primary px-3" @onclick="GoToAddVendor">
+                + Add Vendor
+            </button>
+        </div>
+
+        @if (vendors == null)
+        {
+            <div class="text-center py-5 text-muted">
+                Loading vendors...
+            </div>
+        }
+        else if (!vendors.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                No vendors available.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th class="text-center">Performance</th>
+                            <th class="text-center">Risk</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var v in vendors)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@v.Name</td>
+                                <td>@v.Category</td>
+                                <td>@v.Email</td>
+                                <td>@v.Phone</td>
+                                <td class="text-center">
+                                    <span class="badge @GetPerformanceClass(v.PerformanceScore)">
+                                        @v.PerformanceScore.ToString("0.0")
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge @GetRiskClass(v.RiskScore)">
+                                        @v.RiskScore.ToString("0.0")
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                            @onclick="() => GoToEdit(v.Id)">
+                                        Edit
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info me-1"
+                                            @onclick="() => GoToDetails(v.Id)">
+                                        Details
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => ConfirmDelete(v.Id)">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<Vendor> vendors = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        vendors = await VendorService.GetAllVendorsAsync();
+    }
+
+    private void GoToAddVendor()
+    {
+        NavigationManager.NavigateTo("/vendor-add");
+    }
+
+    private void GoToEdit(int id)
+    {
+        NavigationManager.NavigateTo($"/vendor-edit/{id}");
+    }
+
+    private void GoToDetails(int id)
+    {
+        NavigationManager.NavigateTo($"/vendor-details/{id}");
+    }
+
+    private async Task ConfirmDelete(int id)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this vendor?"))
+        {
+            await VendorService.DeleteVendorAsync(id);
+            vendors = await VendorService.GetAllVendorsAsync();
+        }
+    }
+
+    private string GetRiskClass(double risk)
+    {
+        if (risk <= 20)
+            return "bg-success";
+        else if (risk <= 50)
+            return "bg-warning";
+        else
+            return "bg-danger";
+    }
+
+    private string GetPerformanceClass(double score)
+    {
+        if (score >= 80)
+            return "bg-success";
+        else if (score >= 60)
+            return "bg-warning";
+        else
+            return "bg-danger";
+    }
+}

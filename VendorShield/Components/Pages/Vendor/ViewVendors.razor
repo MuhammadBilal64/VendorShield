@@ -1,0 +1,136 @@
+﻿@page "/vendor-details/{VendorId:int}"
+@using VendorShield.IService
+@using VendorShield.Model
+@inject IVendorService VendorService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+<h3 class="page-title mb-4">Vendor Details</h3>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+
+        @if (vendor == null)
+        {
+            <div class="text-center py-5 text-muted">
+                Loading vendor details...
+            </div>
+        }
+        else
+        {
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="text-muted small">Name</div>
+                    <div class="fw-semibold">@vendor.Name</div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="text-muted small">Category</div>
+                    <div class="fw-semibold">@vendor.Category</div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <div class="text-muted small">Address</div>
+                <div class="fw-semibold">
+                    @vendor.Address, @vendor.City, @vendor.Region, @vendor.PostalCode
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="text-muted small">Phone</div>
+                    <div class="fw-semibold">@vendor.Phone</div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="text-muted small">Email</div>
+                    <div class="fw-semibold">@vendor.Email</div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="text-muted small">Contract Period</div>
+                <div class="fw-semibold">
+                    @vendor.ContractStartDate.ToShortDateString()
+                    –
+                    @(vendor.ContractEndDate?.ToShortDateString() ?? "N/A")
+                </div>
+            </div>
+
+            <!-- Performance Score -->
+            <div class="mb-4">
+                <div class="text-muted small mb-1">Performance Score</div>
+                <div class="progress" style="height: 22px;">
+                    <div class="progress-bar bg-success fw-semibold"
+                         role="progressbar"
+                         style="width: @PerformanceWidth"
+                         aria-valuenow="@vendor.PerformanceScore"
+                         aria-valuemin="0"
+                         aria-valuemax="100">
+                        @vendor.PerformanceScore.ToString("0")%
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk Score -->
+            <div class="mb-4">
+                <div class="text-muted small mb-1">Risk Score</div>
+                <div class="progress" style="height: 22px;">
+                    <div class="progress-bar @RiskColor fw-semibold"
+                         role="progressbar"
+                         style="width: @RiskWidth"
+                         aria-valuenow="@vendor.RiskScore"
+                         aria-valuemin="0"
+                         aria-valuemax="100">
+                        @vendor.RiskScore.ToString("0")%
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end">
+                <button class="btn btn-outline-secondary px-4" @onclick="GoBack">
+                    Back
+                </button>
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int VendorId { get; set; }
+
+    private Vendor? vendor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        vendor = await VendorService.GetVendorByIdAsync(VendorId);
+
+        if (vendor == null)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Vendor not found!");
+            NavigationManager.NavigateTo("/vendors");
+        }
+    }
+
+    private string PerformanceWidth =>
+        vendor != null ? $"{vendor.PerformanceScore:0}%" : "0%";
+
+    private string RiskWidth =>
+        vendor != null ? $"{vendor.RiskScore:0}%" : "0%";
+
+    private string RiskColor =>
+        vendor?.RiskScore switch
+        {
+            <= 30 => "bg-success",
+            <= 60 => "bg-warning",
+            _ => "bg-danger"
+        };
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/vendors");
+    }
+}

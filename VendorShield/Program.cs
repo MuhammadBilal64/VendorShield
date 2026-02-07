@@ -2,7 +2,10 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using VendorShield.Components;
+using VendorShield.DAL;
 using VendorShield.Database;
+using VendorShield.IDAL;
+using VendorShield.IService;
 using VendorShield.Model;
 using VendorShield.Service;
 
@@ -10,6 +13,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<IVendorDAL, VendorDAL>();
+builder.Services.AddScoped<IVendorService, VendorService>();
+
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.Password.RequiredLength = 8;

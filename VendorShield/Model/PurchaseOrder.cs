@@ -11,6 +11,9 @@ namespace VendorShield.Model
         public Vendor Vendor { get; set; }
 
         public string PoNumber { get; set; } = string.Empty;
+        public bool IsOnTime { get; set; } = true;        
+        public bool IsHighQuality { get; set; } = true;   
+
 
         public DateTime PoTime { get; set; }
         public DateTime? ExpectedDeliveryDate { get; set; }

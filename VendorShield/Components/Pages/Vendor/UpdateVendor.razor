@@ -1,0 +1,148 @@
+﻿@page "/vendor-edit/{VendorId:int}"
+@using VendorShield.IService
+@using VendorShield.Model
+@inject IVendorService VendorService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<h3 class="page-title mb-4">Edit Vendor</h3>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+
+        @if (vendor == null)
+        {
+            <div class="text-center py-5 text-muted">
+                Loading vendor details...
+            </div>
+        }
+        else
+        {
+            <EditForm Model="vendor" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger mb-3" />
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Name</label>
+                        <InputText class="form-control" @bind-Value="vendor.Name" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Category</label>
+                        <InputText class="form-control" @bind-Value="vendor.Category" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Address</label>
+                    <InputText class="form-control" @bind-Value="vendor.Address" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">City</label>
+                        <InputText class="form-control" @bind-Value="vendor.City" />
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Region</label>
+                        <InputText class="form-control" @bind-Value="vendor.Region" />
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Postal Code</label>
+                        <InputText class="form-control" @bind-Value="vendor.PostalCode" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Phone</label>
+                        <InputText class="form-control" @bind-Value="vendor.Phone" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Email</label>
+                        <InputText class="form-control" @bind-Value="vendor.Email" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Contract Start Date</label>
+                        <InputDate class="form-control" @bind-Value="vendor.ContractStartDate" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Contract End Date</label>
+                        <InputDate class="form-control" @bind-Value="vendor.ContractEndDate" />
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <button type="submit" class="btn btn-success px-4">
+                        Update Vendor
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary px-4" @onclick="GoBack">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        }
+
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int VendorId { get; set; }
+
+    private Vendor? vendor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        vendor = await VendorService.GetVendorByIdAsync(VendorId);
+
+        if (vendor == null)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Vendor not found!");
+            NavigationManager.NavigateTo("/vendors");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (vendor == null)
+            return;
+
+        if (vendor.ContractEndDate.HasValue &&
+            vendor.ContractEndDate < vendor.ContractStartDate)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "End date cannot be before start date.");
+            return;
+        }
+
+        vendor.Name = vendor.Name?.Trim();
+        vendor.Category = vendor.Category?.Trim();
+        vendor.Address = vendor.Address?.Trim();
+        vendor.City = vendor.City?.Trim();
+        vendor.Region = vendor.Region?.Trim();
+        vendor.PostalCode = vendor.PostalCode?.Trim();
+        vendor.Email = vendor.Email?.Trim();
+        vendor.Phone = vendor.Phone?.Trim();
+
+        var success = await VendorService.UpdateVendorAsync(vendor);
+
+        if (success)
+            NavigationManager.NavigateTo("/vendors");
+        else
+            await JSRuntime.InvokeVoidAsync("alert", "Failed to update vendor.");
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/vendors");
+    }
+}
