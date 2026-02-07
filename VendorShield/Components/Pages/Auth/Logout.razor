@@ -1,0 +1,14 @@
+﻿@page "/auth/logout"
+@using VendorShield.Service
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<h3>Logging out...</h3>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/auth/login", true); // force reload
+    }
+}

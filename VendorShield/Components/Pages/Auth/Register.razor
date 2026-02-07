@@ -1,0 +1,162 @@
+﻿@page "/auth/register"
+@using VendorShield.Model
+@using VendorShield.Service
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<div class="container-fluid bg-light min-vh-100 d-flex align-items-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-10 col-md-8 col-lg-6">
+
+                <div class="card border-0 shadow-lg rounded-4">
+                    <div class="card-body p-4 p-md-5">
+
+                        <!-- Header -->
+                        <div class="text-center mb-4">
+                            <div class="mb-2">
+                                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
+                                    VendorShield
+                                </span>
+                            </div>
+
+                            <h3 class="fw-bold text-dark mb-1">
+                                Create Account
+                            </h3>
+
+                            <p class="text-secondary small mb-0">
+                                Secure access to vendor risk management
+                            </p>
+                        </div>
+
+                        <EditForm Model="@registerModel" OnValidSubmit="HandleRegister">
+                            <DataAnnotationsValidator />
+
+                            <ValidationSummary class="alert alert-danger small py-2 mb-3" />
+
+                            <!-- First Name -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold text-dark">
+                                    First Name
+                                </label>
+                                <InputText @bind-Value="registerModel.FirstName"
+                                           class="form-control form-control-lg rounded-3" />
+                                <ValidationMessage For="@(() => registerModel.FirstName)"
+                                                   class="text-danger small" />
+                            </div>
+
+                            <!-- Last Name -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold text-dark">
+                                    Last Name
+                                </label>
+                                <InputText @bind-Value="registerModel.LastName"
+                                           class="form-control form-control-lg rounded-3" />
+                                <ValidationMessage For="@(() => registerModel.LastName)"
+                                                   class="text-danger small" />
+                            </div>
+
+                            <!-- Email -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold text-dark">
+                                    Email Address
+                                </label>
+                                <InputText @bind-Value="registerModel.Email"
+                                           type="email"
+                                           class="form-control form-control-lg rounded-3" />
+                                <ValidationMessage For="@(() => registerModel.Email)"
+                                                   class="text-danger small" />
+                            </div>
+
+                            <!-- Password -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold text-dark">
+                                    Password
+                                </label>
+                                <InputText @bind-Value="registerModel.Password"
+                                           type="password"
+                                           class="form-control form-control-lg rounded-3" />
+                                <ValidationMessage For="@(() => registerModel.Password)"
+                                                   class="text-danger small" />
+                            </div>
+
+                            <!-- Confirm Password -->
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold text-dark">
+                                    Confirm Password
+                                </label>
+                                <InputText @bind-Value="registerModel.ConfirmPassword"
+                                           type="password"
+                                           class="form-control form-control-lg rounded-3" />
+                                <ValidationMessage For="@(() => registerModel.ConfirmPassword)"
+                                                   class="text-danger small" />
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit"
+                                    class="btn btn-primary btn-lg w-100 d-flex justify-content-center align-items-center gap-2 shadow-sm"
+                                    disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                    <span>Creating account…</span>
+                                }
+                                else
+                                {
+                                    <span>Create Secure Account</span>
+                                }
+                            </button>
+
+                            <!-- Error Message -->
+                            @if (!string.IsNullOrEmpty(message))
+                            {
+                                <div class="alert alert-danger text-center mt-3 mb-0 small">
+                                    @message
+                                </div>
+                            }
+
+                            <!-- Footer -->
+                            <div class="text-center mt-4">
+                                <span class="text-secondary small">
+                                    Already have an account?
+                                    <a href="/auth/login"
+                                       class="fw-semibold text-primary text-decoration-none">
+                                        Sign in
+                                    </a>
+                                </span>
+                            </div>
+
+                        </EditForm>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterRequest registerModel = new RegisterRequest();
+    private string message = "";
+    private bool isLoading = false;
+
+    private async Task HandleRegister()
+    {
+        isLoading = true;
+
+        var result = await AuthService.RegisterAsync(registerModel);
+
+        if (result)
+        {
+            Navigation.NavigateTo("/auth/login");
+        }
+        else
+        {
+            message = "Registration failed. Please try again.";
+        }
+
+        isLoading = false;
+    }
+}

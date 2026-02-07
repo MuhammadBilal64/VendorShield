@@ -1,9 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using VendorShield.Model;
 
 namespace VendorShield.Database
 {
-    public class AppDbContext : DbContext
+    public class AppDbContext : IdentityDbContext<ApplicationUser>
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
@@ -16,7 +17,6 @@ namespace VendorShield.Database
         public DbSet<Delivery> Deliveries { get; set; }
         public DbSet<Incident> Incidents { get; set; }
         public DbSet<ScoringConfig>ScoringConfigs { get; set; }
-        public DbSet<AdminUser>AdminUsers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

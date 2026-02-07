@@ -1,0 +1,128 @@
+﻿@page "/auth/login"
+@using VendorShield.Model
+@using VendorShield.Service
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<div class="container-fluid bg-light min-vh-100 d-flex align-items-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-sm-10 col-md-8 col-lg-6">
+
+                <div class="card border-0 shadow-lg rounded-4">
+                    <div class="card-body p-4 p-md-5">
+
+                        <!-- Header -->
+                        <div class="text-center mb-4">
+                            <div class="mb-2">
+                                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
+                                    VendorShield
+                                </span>
+                            </div>
+
+                            <h3 class="fw-bold text-dark mb-1">
+                                Welcome Back
+                            </h3>
+
+                            <p class="text-secondary small mb-0">
+                                Sign in to your secure dashboard
+                            </p>
+                        </div>
+
+                        <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+                            <DataAnnotationsValidator />
+
+                            <ValidationSummary class="alert alert-danger small py-2 mb-3" />
+
+                            <!-- Email -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold text-dark">
+                                    Email Address
+                                </label>
+                                <InputText @bind-Value="loginModel.Email"
+                                           type="email"
+                                           class="form-control form-control-lg rounded-3" />
+                                <ValidationMessage For="@(() => loginModel.Email)"
+                                                   class="text-danger small" />
+                            </div>
+
+                            <!-- Password -->
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold text-dark">
+                                    Password
+                                </label>
+                                <InputText @bind-Value="loginModel.Password"
+                                           type="password"
+                                           class="form-control form-control-lg rounded-3" />
+                                <ValidationMessage For="@(() => loginModel.Password)"
+                                                   class="text-danger small" />
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit"
+                                    class="btn btn-primary btn-lg w-100 d-flex justify-content-center align-items-center gap-2 shadow-sm"
+                                    disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                    <span>Signing in…</span>
+                                }
+                                else
+                                {
+                                    <span>Sign In Securely</span>
+                                }
+                            </button>
+
+                            <!-- Error Message -->
+                            @if (!string.IsNullOrEmpty(message))
+                            {
+                                <div class="alert alert-danger text-center mt-3 mb-0 small">
+                                    @message
+                                </div>
+                            }
+
+                            <!-- Footer -->
+                            <div class="text-center mt-4">
+                                <span class="text-secondary small">
+                                    Don’t have an account?
+                                    <a href="/auth/register"
+                                       class="fw-semibold text-primary text-decoration-none">
+                                        Create one
+                                    </a>
+                                </span>
+                            </div>
+
+                        </EditForm>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginRequest loginModel = new LoginRequest();
+    private string message = "";
+    private bool isLoading = false;
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+
+        var result = await AuthService.LoginAsync(loginModel);
+
+        if (result)
+        {
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            message = "Invalid email or password.";
+        }
+
+        isLoading = false;
+    }
+}

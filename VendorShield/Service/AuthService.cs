@@ -1,79 +1,56 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
 using VendorShield.Database;
 using VendorShield.Model;
 using VendorShield.Utility;
+using RegisterRequest = VendorShield.Model.RegisterRequest;
 
 namespace VendorShield.Service
 {
     public class AuthService
     {
-        private readonly AppDbContext _context;
-        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
 
-        public AuthService(AppDbContext context, IHttpContextAccessor httpContextAccessor)
+        public AuthService(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
         {
-            _context = context;
-            _httpContextAccessor = httpContextAccessor;
+            _userManager = userManager;
+            _signInManager = signInManager;
         }
-        public async Task<bool> RegisterAsync(Model.RegisterRequest Request)
+        public async Task<bool> RegisterAsync(RegisterRequest Request)
         {
-            if (_context.AdminUsers.Any(u => u.Email == Request.Email))
+            var user = await _userManager.FindByEmailAsync(Request.Email);
+            if (user != null)
             {
-                return false; // Email already exists
+                return false;
             }
-            var user = new AdminUser
+            var UserToCreate = new ApplicationUser
             {
+                UserName = Request.Email,
+                Email = Request.Email,
                 FirstName = Request.FirstName,
                 LastName = Request.LastName,
-                Email = Request.Email,
-                PasswordHash = Utility.PasswordHasher.HashPassword(Request.Password)
+                CreatedDate = DateTime.UtcNow,
+                IsActive = true
             };
-            await _context.AdminUsers.AddAsync(user);
-            await _context.SaveChangesAsync();
-            return true;
+            var result = await _userManager.CreateAsync(UserToCreate, Request.Password);
+            return result.Succeeded;
+
+
 
         }
         public async Task<bool> LoginAsync(Model.LoginRequest Request)
         {
-            var user = _context.AdminUsers.FirstOrDefault(u => u.Email == Request.Email);
-            if (user == null || !Utility.PasswordHasher.VerifyPassword(Request.Password, user.PasswordHash))
-
-            {
-                return false;
-            }
-
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, user.FirstName + " " + user.LastName),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim("UserId", user.Id.ToString())
-            };
-            var claimidentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            var authproperties = new AuthenticationProperties
-            {
-                IsPersistent = true,
-                ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1)
-            };
-            var httpContext = _httpContextAccessor.HttpContext;
-            if (httpContext == null)
-                throw new Exception("No HttpContext available. Make sure IHttpContextAccessor is registered.");
-            await httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimidentity), authproperties);
-            return true;
-
-
-
-
-
+            var result = await _signInManager.PasswordSignInAsync(Request.Email, Request.Password, isPersistent: true, lockoutOnFailure: true);
+            return result.Succeeded;
         }
         public async Task LogoutAsync()
         {
-            var httpContext = _httpContextAccessor.HttpContext;
-            if (httpContext == null)
-                throw new Exception("No HttpContext available. Make sure IHttpContextAccessor is registered.");
-            await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            await _signInManager.SignOutAsync();
+
         }
     }
 }
