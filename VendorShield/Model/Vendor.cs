@@ -33,7 +33,7 @@ namespace VendorShield.Model
         // Navigation Properties
         public ICollection<PurchaseOrder> PurchaseOrders { get; set; } = new List<PurchaseOrder>();
         public ICollection<Incident> Incidents { get; set; } = new List<Incident>();
-
+        public bool IsActive { get; set; } = true;
 
 
     }
