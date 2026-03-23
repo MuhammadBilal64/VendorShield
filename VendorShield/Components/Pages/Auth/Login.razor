@@ -1,8 +1,10 @@
-﻿@page "/auth/login"
+@page "/auth/login"
 @using VendorShield.Model
 @using VendorShield.Service
 @inject AuthService AuthService
 @inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @rendermode InteractiveServer
 
 <div class="container-fluid bg-light min-vh-100 d-flex align-items-center">
@@ -116,7 +118,15 @@
 
         if (result)
         {
-            Navigation.NavigateTo("/");
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            var hasAnyRole =
+                user.IsInRole("Admin") ||
+                user.IsInRole("Buyer") ||
+                user.IsInRole("Viewer");
+
+            Navigation.NavigateTo(hasAnyRole ? "/" : "/pending-access");
         }
         else
         {
