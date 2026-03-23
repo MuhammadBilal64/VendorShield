@@ -1,4 +1,5 @@
-﻿@page "/auth/register"
+@page "/auth/register"
+@using System.Linq
 @using VendorShield.Model
 @using VendorShield.Service
 @inject AuthService AuthService
@@ -148,13 +149,13 @@
 
         var result = await AuthService.RegisterAsync(registerModel);
 
-        if (result)
+        if (result.Succeeded)
         {
             Navigation.NavigateTo("/auth/login");
         }
         else
         {
-            message = "Registration failed. Please try again.";
+            message = string.Join(" ", result.Errors.Select(e => e.Description));
         }
 
         isLoading = false;

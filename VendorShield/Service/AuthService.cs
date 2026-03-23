@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
@@ -20,12 +20,16 @@ namespace VendorShield.Service
             _userManager = userManager;
             _signInManager = signInManager;
         }
-        public async Task<bool> RegisterAsync(RegisterRequest Request)
+        public async Task<IdentityResult> RegisterAsync(RegisterRequest Request)
         {
             var user = await _userManager.FindByEmailAsync(Request.Email);
             if (user != null)
             {
-                return false;
+                return IdentityResult.Failed(new IdentityError
+                {
+                    Code = "DuplicateEmail",
+                    Description = "This email is already registered."
+                });
             }
             var UserToCreate = new ApplicationUser
             {
@@ -37,7 +41,7 @@ namespace VendorShield.Service
                 IsActive = true
             };
             var result = await _userManager.CreateAsync(UserToCreate, Request.Password);
-            return result.Succeeded;
+            return result;
 
 
 

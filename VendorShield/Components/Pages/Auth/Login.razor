@@ -1,10 +1,8 @@
 @page "/auth/login"
 @using VendorShield.Model
-@using VendorShield.Service
-@inject AuthService AuthService
 @inject NavigationManager Navigation
-@using Microsoft.AspNetCore.Components.Authorization
-@inject AuthenticationStateProvider AuthenticationStateProvider
+@using System.Net.Http.Json
+@inject HttpClient Http
 @rendermode InteractiveServer
 
 <div class="container-fluid bg-light min-vh-100 d-flex align-items-center">
@@ -113,26 +111,34 @@
     private async Task HandleLogin()
     {
         isLoading = true;
+        message = "";
 
-        var result = await AuthService.LoginAsync(loginModel);
-
-        if (result)
+        try
         {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
+            var endpoint = new Uri(new Uri(Navigation.BaseUri), "auth/api/login");
+            var response = await Http.PostAsJsonAsync(endpoint, loginModel);
 
-            var hasAnyRole =
-                user.IsInRole("Admin") ||
-                user.IsInRole("Buyer") ||
-                user.IsInRole("Viewer");
+            if (!response.IsSuccessStatusCode)
+            {
+                message = "Invalid email or password.";
+                return;
+            }
 
-            Navigation.NavigateTo(hasAnyRole ? "/" : "/pending-access");
+            var data = await response.Content.ReadFromJsonAsync<LoginApiResponse>();
+            Navigation.NavigateTo(data?.redirectUrl ?? "/pending-access");
         }
-        else
+        catch
         {
-            message = "Invalid email or password.";
+            message = "Login failed. Please try again.";
         }
+        finally
+        {
+            isLoading = false;
+        }
+    }
 
-        isLoading = false;
+    private sealed class LoginApiResponse
+    {
+        public string? redirectUrl { get; set; }
     }
 }

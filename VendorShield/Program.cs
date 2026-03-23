@@ -54,6 +54,12 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 
 builder.Services.AddAuthorization();
+
+// Required for Blazor authorization components (AuthorizeView, [Authorize] routing)
+// to be able to resolve AuthenticationStateProvider via CascadingAuthenticationState.
+builder.Services.AddCascadingAuthenticationState();
+
+builder.Services.AddHttpClient();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("VendorShieldContext")),
     ServiceLifetime.Scoped); // 
@@ -77,6 +83,42 @@ app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages:
 app.UseHttpsRedirection();
 
 app.UseAntiforgery();
+
+// NOTE:
+// Blazor Server interactive components run over SignalR, so writing auth cookies
+// during a component event can fail with "Headers are read-only, response has already started".
+// This endpoint performs the Identity sign-in via a normal HTTP request so Set-Cookie works.
+app.MapPost("/auth/api/login", async (
+        LoginRequest request,
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager) =>
+    {
+        var result = await signInManager.PasswordSignInAsync(
+            request.Email,
+            request.Password,
+            isPersistent: true,
+            lockoutOnFailure: true);
+
+        if (!result.Succeeded)
+        {
+            return Results.Json(new { message = "Invalid email or password." }, statusCode: 401);
+        }
+
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+        {
+            return Results.Ok(new { redirectUrl = "/pending-access" });
+        }
+
+        var roles = await userManager.GetRolesAsync(user);
+        var hasAnyRole =
+            roles.Contains("Admin") ||
+            roles.Contains("Buyer") ||
+            roles.Contains("Viewer");
+
+        return Results.Ok(new { redirectUrl = hasAnyRole ? "/" : "/pending-access" });
+    })
+    .DisableAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
