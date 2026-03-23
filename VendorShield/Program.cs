@@ -47,7 +47,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/auth/login";
-    options.AccessDeniedPath = "/auth/access-denied";
+    options.AccessDeniedPath = "/pending-access";
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
 });
