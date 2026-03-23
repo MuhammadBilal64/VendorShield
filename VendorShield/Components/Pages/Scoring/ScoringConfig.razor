@@ -1,0 +1,131 @@
+@page "/scoring-config"
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+
+@using VendorShield.IService
+@using ScoringConfigModel = VendorShield.Model.ScoringConfig
+@inject IScoringConfigService ScoringConfigService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<h3 class="page-title mb-4">Scoring Configuration</h3>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        @if (model == null)
+        {
+            <div class="text-center py-5 text-muted">
+                <div class="spinner-border" role="status" aria-label="Loading"></div>
+                <div class="mt-2">Loading scoring configuration...</div>
+            </div>
+        }
+        else
+        {
+            var weightsSum = model.OnTimeWeight + model.QualityWeight + model.IncidentWeight;
+            var weightsValid = Math.Abs(weightsSum - 1.0) <= 0.0001;
+
+            var thresholdsValid =
+                model.ThresholdLowRisk >= 0 && model.ThresholdLowRisk <= 100 &&
+                model.ThresholdMediumRisk >= 0 && model.ThresholdMediumRisk <= 100;
+
+            @if (!weightsValid)
+            {
+                <div class="alert alert-warning" role="alert">
+                    Weights must add up to <strong>1.0</strong>. Current sum: @weightsSum.ToString("0.00").
+                </div>
+            }
+            @if (!thresholdsValid)
+            {
+                <div class="alert alert-danger" role="alert">
+                    Thresholds must be between <strong>0</strong> and <strong>100</strong>.
+                </div>
+            }
+
+            <EditForm Model="model" OnSubmit="HandleSave">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">On-Time Weight</label>
+                        <InputNumber class="form-control" @bind-Value="model.OnTimeWeight" step="0.01" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Quality Weight</label>
+                        <InputNumber class="form-control" @bind-Value="model.QualityWeight" step="0.01" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Incident Weight</label>
+                        <InputNumber class="form-control" @bind-Value="model.IncidentWeight" step="0.01" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Low Risk Threshold (OverallScore)</label>
+                        <InputNumber class="form-control" @bind-Value="model.ThresholdLowRisk" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Medium Risk Threshold (OverallScore)</label>
+                        <InputNumber class="form-control" @bind-Value="model.ThresholdMediumRisk" />
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <button type="button" class="btn btn-outline-secondary px-4" @onclick="GoBack">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-success px-4">
+                        Save Configuration
+                    </button>
+                </div>
+            </EditForm>
+        }
+    </div>
+</div>
+
+@code {
+    private ScoringConfigModel? model;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model = await ScoringConfigService.GetActiveConfigAsync();
+        model ??= new ScoringConfigModel();
+    }
+
+    private void GoBack() => NavigationManager.NavigateTo("/");
+
+    private async Task HandleSave()
+    {
+        if (model == null) return;
+
+        var weightsSum = model.OnTimeWeight + model.QualityWeight + model.IncidentWeight;
+        var weightsValid = Math.Abs(weightsSum - 1.0) <= 0.0001;
+
+        var thresholdsValid =
+            model.ThresholdLowRisk >= 0 && model.ThresholdLowRisk <= 100 &&
+            model.ThresholdMediumRisk >= 0 && model.ThresholdMediumRisk <= 100;
+
+        if (!thresholdsValid)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Thresholds must be between 0 and 100.");
+            return;
+        }
+
+        if (!weightsValid)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Weights must add up to 1.0.");
+            return;
+        }
+
+        var ok = await ScoringConfigService.UpdateActiveConfigAsync(model);
+        if (!ok)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Failed to save configuration. Check weights and thresholds.");
+            return;
+        }
+
+        await JSRuntime.InvokeVoidAsync("alert", "Scoring configuration updated.");
+        NavigationManager.NavigateTo("/");
+    }
+}
+

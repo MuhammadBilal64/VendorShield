@@ -1,10 +1,14 @@
-﻿@page "/vendors"
+@page "/vendors"
 @using VendorShield.IService
 @using VendorShield.Model
+@using VendorShield.Utility
 @inject IVendorService VendorService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin,Buyer,Viewer")]
 <h3 class="page-title mb-4">Vendors</h3>
 
 <div class="card shadow-sm border-0">
@@ -20,7 +24,8 @@
         @if (vendors == null)
         {
             <div class="text-center py-5 text-muted">
-                Loading vendors...
+                <div class="spinner-border" role="status" aria-label="Loading"></div>
+                <div class="mt-2">Loading vendors...</div>
             </div>
         }
         else if (!vendors.Any())
@@ -37,6 +42,7 @@
                         <tr>
                             <th>Name</th>
                             <th>Category</th>
+                            <th>Status</th>
                             <th>Email</th>
                             <th>Phone</th>
                             <th class="text-center">Performance</th>
@@ -50,6 +56,11 @@
                             <tr>
                                 <td class="fw-semibold">@v.Name</td>
                                 <td>@v.Category</td>
+                                <td>
+                                    <span class="badge @GetStatusClass(v.Status)">
+                                        @v.Status
+                                    </span>
+                                </td>
                                 <td>@v.Email</td>
                                 <td>@v.Phone</td>
                                 <td class="text-center">
@@ -59,8 +70,9 @@
                                 </td>
                                 <td class="text-center">
                                     <span class="badge @GetRiskClass(v.RiskScore)">
-                                        @v.RiskScore.ToString("0.0")
+                                        @GetRiskLevel(v.RiskScore)
                                     </span>
+                                    <div class="text-muted small">@v.RiskScore.ToString("0.0")%</div>
                                 </td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-outline-primary me-1"
@@ -122,9 +134,27 @@
         if (risk <= 20)
             return "bg-success";
         else if (risk <= 50)
-            return "bg-warning";
+            return "bg-warning text-dark";
         else
             return "bg-danger";
+    }
+
+    private string GetRiskLevel(double risk)
+    {
+        if (risk <= 20) return "Low";
+        if (risk <= 50) return "Medium";
+        return "High";
+    }
+
+    private string GetStatusClass(VendorStatus status)
+    {
+        return status switch
+        {
+            VendorStatus.Active => "bg-success",
+            VendorStatus.OnHold => "bg-warning text-dark",
+            VendorStatus.Blacklisted => "bg-danger",
+            _ => "bg-secondary"
+        };
     }
 
     private string GetPerformanceClass(double score)

@@ -1,9 +1,13 @@
-﻿@page "/auth/logout"
+@page "/auth/logout"
+@rendermode InteractiveServer
 @using VendorShield.Service
 @inject AuthService AuthService
 @inject NavigationManager Navigation
 
 <h3>Logging out...</h3>
+<div class="text-center mb-4">
+    <div class="spinner-border" role="status" aria-label="Logging out"></div>
+</div>
 
 @code {
     protected override async Task OnInitializedAsync()

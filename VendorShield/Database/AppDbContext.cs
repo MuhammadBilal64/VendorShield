@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using VendorShield.Model;
 
@@ -36,18 +36,18 @@ namespace VendorShield.Database
 
             modelBuilder.Entity<Incident>()
                 .HasOne(i => i.PurchaseOrder)
-                .WithMany() 
+                .WithMany(po => po.Incidents)
                 .HasForeignKey(i => i.PurchaseOrderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<PurchaseOrderLine>()
                 .HasOne(pol => pol.PurchaseOrder)
-                .WithMany() 
+                .WithMany(po => po.Lines)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Delivery>()
                 .HasOne(d => d.PurchaseOrder)
-                .WithMany() 
+                .WithMany(po => po.Deliveries)
                 .HasForeignKey(d => d.PurchaseOrderId)
                 .OnDelete(DeleteBehavior.Cascade);
 

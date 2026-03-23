@@ -1,0 +1,236 @@
+@page "/purchaseorders/details/{PurchaseOrderId:int}"
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin,Buyer")]
+
+@using VendorShield.Model
+@using VendorShield.IService
+@using VendorShield.Utility
+@inject IPurchaseOrderService PurchaseOrderService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<h3 class="page-title mb-4">Purchase Order Details</h3>
+
+@if (model == null)
+{
+    <div class="text-center py-5 text-muted">
+        <div class="spinner-border" role="status" aria-label="Loading"></div>
+        <div class="mt-2">Loading...</div>
+    </div>
+}
+else
+{
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                <div>
+                    <div class="text-muted small">PO Number</div>
+                    <div class="fw-semibold">@model.PoNumber</div>
+                </div>
+                <div>
+                    <div class="text-muted small">Vendor</div>
+                    <div class="fw-semibold">@model.Vendor?.Name</div>
+                </div>
+                <div>
+                    <div class="text-muted small">Status</div>
+                    <div>
+                        <span class="badge @GetStatusClass(model.Status)">
+                            @model.Status
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <hr />
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="text-muted small">PO Date</div>
+                    <div class="fw-semibold">@model.PoTime.ToShortDateString()</div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="text-muted small">Expected Delivery</div>
+                    <div class="fw-semibold">@(model.ExpectedDeliveryDate?.ToShortDateString() ?? "N/A")</div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="text-muted small">Total Amount</div>
+                    <div class="fw-semibold">@model.TotalAmount.ToString("0.00")</div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="text-muted small mb-1">Delivered Qty</div>
+                    <div class="fw-semibold">@deliveredQty</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-muted small mb-1">Ordered Qty</div>
+                    <div class="fw-semibold">@orderedQty</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-muted small mb-1">Fill Rate</div>
+                    <div class="fw-semibold">@fillRatePct.ToString("0.0")%</div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="fw-semibold mb-2">PO Lines</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Item</th>
+                                <th class="text-end">Qty</th>
+                                <th class="text-end">Unit Price</th>
+                                <th class="text-end">Line Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var line in model.Lines ?? Enumerable.Empty<PurchaseOrderLine>())
+                            {
+                                <tr>
+                                    <td>@line.ItemName</td>
+                                    <td class="text-end">@line.Quantity</td>
+                                    <td class="text-end">@line.UnitPrice.ToString("0.00")</td>
+                                    <td class="text-end fw-semibold">@line.LineTotal.ToString("0.00")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="fw-semibold mb-2">Deliveries</div>
+                    @if (model.Deliveries == null || !model.Deliveries.Any())
+                    {
+                        <div class="text-muted small">No deliveries yet.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th class="text-end">Delivered</th>
+                                        <th class="text-end">Defective</th>
+                                        <th class="text-end">Delay Days</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var d in model.Deliveries)
+                                    {
+                                        var delayDays = model.ExpectedDeliveryDate.HasValue
+                                            ? (int?)(d.ActualDeliveryDate - model.ExpectedDeliveryDate.Value).Days
+                                            : null;
+                                        <tr>
+                                            <td>@d.ActualDeliveryDate.ToShortDateString()</td>
+                                            <td class="text-end">@d.DeliveredQuantity</td>
+                                            <td class="text-end">@d.DefectiveQuantity</td>
+                                            <td class="text-end">
+                                                @(delayDays.HasValue ? delayDays.Value.ToString() : "N/A")
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+
+                <div class="col-md-6">
+                    <div class="fw-semibold mb-2">Incidents</div>
+                    @if (model.Incidents == null || !model.Incidents.Any())
+                    {
+                        <div class="text-muted small">No incidents yet.</div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Severity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var i in model.Incidents)
+                                    {
+                                        <tr>
+                                            <td>@i.IncidentDate.ToShortDateString()</td>
+                                            <td>@i.Type</td>
+                                            <td>@i.Severity</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <button class="btn btn-outline-secondary px-4" @onclick="GoBack">
+                    Back
+                </button>
+                <button class="btn btn-primary px-4" @onclick="GoToAddDelivery">
+                    + Add Delivery
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int PurchaseOrderId { get; set; }
+
+    private PurchaseOrder? model;
+
+    private int orderedQty;
+    private int deliveredQty;
+    private decimal fillRatePct;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model = await PurchaseOrderService.GetPurchaseOrderByIdAsync(PurchaseOrderId);
+        if (model == null)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Purchase order not found!");
+            NavigationManager.NavigateTo("/purchaseorders");
+            return;
+        }
+
+        orderedQty = model.Lines?.Sum(l => l.Quantity) ?? 0;
+        deliveredQty = model.Deliveries?.Sum(d => d.DeliveredQuantity) ?? 0;
+        fillRatePct = orderedQty > 0
+            ? ((decimal)deliveredQty / orderedQty) * 100m
+            : 0m;
+    }
+
+    private void GoBack() => NavigationManager.NavigateTo("/purchaseorders");
+
+    private void GoToAddDelivery()
+    {
+        NavigationManager.NavigateTo($"/deliveries/create/{PurchaseOrderId}");
+    }
+
+    private string GetStatusClass(PurchaseOrderStatus status)
+    {
+        return status switch
+        {
+            PurchaseOrderStatus.Open => "bg-primary",
+            PurchaseOrderStatus.PartiallyDelivered => "bg-warning text-dark",
+            PurchaseOrderStatus.Completed => "bg-success",
+            PurchaseOrderStatus.Cancelled => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+}
+

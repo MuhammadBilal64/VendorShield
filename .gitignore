@@ -361,3 +361,11 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# ------------------------------------------------------------
+# Project AI/notes files
+# Ignore all markdown files except README.md.
+# This prevents instruction/notes files (e.g. file.md, cursorrules.md)
+# from being pushed to GitHub.
+*.md
+!README.md

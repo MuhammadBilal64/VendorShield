@@ -1,4 +1,4 @@
-﻿using VendorShield.Model;
+using VendorShield.Model;
 
 namespace VendorShield.IDAL
 {
@@ -8,7 +8,7 @@ namespace VendorShield.IDAL
         Task RemoveAsync(int id);
         Task UpdateAsync(Vendor vendor);
         Task<List<Vendor>> GetAllAsync();
-        Task<Vendor> GetByIdAsync(int id);
+        Task<Vendor?> GetByIdAsync(int id);
 
     }
 

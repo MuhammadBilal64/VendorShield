@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using VendorShield.Utility;
 
 namespace VendorShield.Model
@@ -11,8 +11,10 @@ namespace VendorShield.Model
         public Vendor Vendor { get; set; }
 
         public string PoNumber { get; set; } = string.Empty;
-        public bool IsOnTime { get; set; } = true;        
-        public bool IsHighQuality { get; set; } = true;   
+        // These are currently used by VendorService scoring.
+        // They are typically derived later from deliveries/incidents.
+        public bool IsOnTime { get; set; } = false;
+        public bool IsHighQuality { get; set; } = false;
 
 
         public DateTime PoTime { get; set; }
@@ -27,6 +29,12 @@ namespace VendorShield.Model
 
         public DateTime CreatedDate { get; set; } = DateTime.Now;
         public DateTime? ModifiedDate { get; set; }
+
+        // Navigation properties (needed for PO CRUD UI and EF includes).
+        // Use List<> so the UI can safely index/remove lines.
+        public List<PurchaseOrderLine> Lines { get; set; } = new();
+        public List<Delivery> Deliveries { get; set; } = new();
+        public List<Incident> Incidents { get; set; } = new();
 
 
     }

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using VendorShield.Database;
 using VendorShield.IDAL;
 using VendorShield.Model;
@@ -23,8 +23,9 @@ namespace VendorShield.DAL
         public async Task<List<Vendor>> GetAllAsync()
         {
             return await _context.Vendors
-                .Include(v => v.PurchaseOrders)
-                .Include(v => v.Incidents)
+                .Include(v => v.PurchaseOrders.Where(po => po.IsActive))
+                    .ThenInclude(po => po.Deliveries.Where(d => d.IsActive))
+                .Include(v => v.Incidents.Where(i => i.IsActive))
                 .Where(v => v.IsActive)
                 .ToListAsync();
         }
@@ -32,8 +33,9 @@ namespace VendorShield.DAL
         public async Task<Vendor?> GetByIdAsync(int id)
         {
             return await _context.Vendors
-                .Include(v => v.PurchaseOrders)
-                .Include(v => v.Incidents)
+                .Include(v => v.PurchaseOrders.Where(po => po.IsActive))
+                    .ThenInclude(po => po.Deliveries.Where(d => d.IsActive))
+                .Include(v => v.Incidents.Where(i => i.IsActive))
                 .FirstOrDefaultAsync(v => v.Id == id && v.IsActive);
         }
 

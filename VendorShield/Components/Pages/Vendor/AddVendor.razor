@@ -1,10 +1,13 @@
-﻿@page "/vendor-add"
+@page "/vendor-add"
 @using VendorShield.IService
 @using VendorShield.Model
 @inject IVendorService VendorService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
 
 <h3 class="page-title mb-4">Add New Vendor</h3>
 
@@ -111,7 +114,10 @@
         var success = await VendorService.AddVendorAsync(vendor);
 
         if (success)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Vendor added successfully.");
             NavigationManager.NavigateTo("/vendors");
+        }
         else
             await JSRuntime.InvokeVoidAsync("alert", "Failed to add vendor.");
     }

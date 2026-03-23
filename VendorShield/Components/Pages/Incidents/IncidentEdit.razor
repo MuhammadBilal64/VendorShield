@@ -1,0 +1,192 @@
+@page "/incidents/edit/{IncidentId:int}"
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin,Buyer")]
+
+@using VendorShield.IService
+@using VendorShield.Model
+@using VendorShield.Utility
+@inject IVendorService VendorService
+@inject IPurchaseOrderService PurchaseOrderService
+@inject IIncidentService IncidentService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<h3 class="page-title mb-4">Edit Incident</h3>
+
+@if (model == null || vendors == null)
+{
+    <div class="text-center py-5 text-muted">
+        <div class="spinner-border" role="status" aria-label="Loading"></div>
+        <div class="mt-2">Loading incident...</div>
+    </div>
+}
+else
+{
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <EditForm Model="model" OnValidSubmit="HandleSubmit">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Vendor</label>
+                        <InputSelect class="form-select" @bind-Value="model.VendorId" @onchange="VendorChanged">
+                            @foreach (var v in vendors)
+                            {
+                                <option value="@v.Id">@v.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Purchase Order</label>
+                        <InputSelect class="form-select" @bind-Value="model.PurchaseOrderId">
+                            @if (!purchaseOrdersForVendor.Any())
+                            {
+                                <option value="0" disabled>-- No PO for selected vendor --</option>
+                            }
+                            else
+                            {
+                                @foreach (var po in purchaseOrdersForVendor)
+                                {
+                                    <option value="@po.Id">@po.PoNumber</option>
+                                }
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Incident Date</label>
+                        <InputDate class="form-control" @bind-Value="model.IncidentDate" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Type</label>
+                        <InputSelect class="form-select" @bind-Value="model.Type">
+                            @foreach (var t in Enum.GetValues(typeof(IncidentType)).Cast<IncidentType>())
+                            {
+                                <option value="@t">@GetIncidentTypeLabel(t)</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Severity</label>
+                        <InputSelect class="form-select" @bind-Value="model.Severity">
+                            @foreach (var s in Enum.GetValues(typeof(IncidentSeverity)).Cast<IncidentSeverity>())
+                            {
+                                <option value="@s">@s</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Status</label>
+                        <InputSelect class="form-select" @bind-Value="model.Status">
+                            @foreach (var st in Enum.GetValues(typeof(IncidentStatus)).Cast<IncidentStatus>())
+                            {
+                                <option value="@st">@st</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Description</label>
+                        <InputText class="form-control" @bind-Value="model.Description" />
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <button type="button" class="btn btn-outline-secondary px-4" @onclick="GoBack">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-success px-4">
+                        Save Changes
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int IncidentId { get; set; }
+
+    private List<Vendor>? vendors;
+    private List<PurchaseOrder> allPurchaseOrders = new();
+    private List<PurchaseOrder> purchaseOrdersForVendor = new();
+
+    private Incident? model;
+
+    protected override async Task OnInitializedAsync()
+    {
+        vendors = await VendorService.GetAllVendorsAsync();
+        allPurchaseOrders = await PurchaseOrderService.GetAllPurchaseOrdersAsync();
+        model = await IncidentService.GetIncidentByIdAsync(IncidentId);
+
+        if (model == null)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Incident not found!");
+            NavigationManager.NavigateTo("/incidents");
+            return;
+        }
+
+        RefreshPurchaseOrders();
+    }
+
+    private void VendorChanged(ChangeEventArgs _)
+    {
+        RefreshPurchaseOrders();
+    }
+
+    private void RefreshPurchaseOrders()
+    {
+        if (model == null) return;
+
+        purchaseOrdersForVendor = allPurchaseOrders
+            .Where(po => po.VendorId == model.VendorId)
+            .ToList();
+
+        if (purchaseOrdersForVendor.Any())
+        {
+            if (!purchaseOrdersForVendor.Any(po => po.Id == model.PurchaseOrderId))
+            {
+                model.PurchaseOrderId = purchaseOrdersForVendor[0].Id;
+            }
+        }
+        else
+        {
+            model.PurchaseOrderId = 0;
+        }
+    }
+
+    private void GoBack() => NavigationManager.NavigateTo("/incidents");
+
+    private async Task HandleSubmit()
+    {
+        if (model == null) return;
+
+        var success = await IncidentService.UpdateIncidentAsync(model);
+        if (!success)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Failed to update incident. Ensure Vendor/PO match and description is provided.");
+            return;
+        }
+
+        await JSRuntime.InvokeVoidAsync("alert", "Incident updated successfully.");
+        NavigationManager.NavigateTo("/incidents");
+    }
+
+    private static string GetIncidentTypeLabel(IncidentType type) =>
+        type switch
+        {
+            IncidentType.DeliveryDelay => "Late",
+            IncidentType.QualityIssue => "Quality",
+            IncidentType.CommunicationProblem => "Documentation",
+            IncidentType.Other => "Other",
+            _ => type.ToString()
+        };
+}
+

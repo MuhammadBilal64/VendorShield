@@ -1,70 +1,101 @@
-﻿<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-    <div class="container-fluid">
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 
-        <!-- Brand -->
-        <a class="navbar-brand fw-semibold" href="">
-            VendorShield
-        </a>
+<aside class="sidebar bg-dark">
+    <a class="brand" href="/">
+        VendorShield
+    </a>
 
-        <!-- Toggler / Hamburger for mobile -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-                data-bs-target="#mainNavbar"
-                aria-controls="mainNavbar"
-                aria-expanded="false"
-                aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+    <div class="sidebar-heading">Dashboard</div>
+    <nav class="nav nav-pills flex-column">
+        <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+            Dashboard
+        </NavLink>
+    </nav>
 
-        <!-- Navbar links -->
-        <div class="collapse navbar-collapse" id="mainNavbar">
-            <ul class="navbar-nav ms-auto">
+    <div class="sidebar-heading">Operations</div>
+    <nav class="nav nav-pills flex-column">
+        <NavLink class="nav-link" href="/vendors" Match="NavLinkMatch.Prefix">
+            Vendors
+        </NavLink>
 
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                        Home
-                    </NavLink>
-                </li>
+        <AuthorizeView Roles="Admin,Buyer">
+            <NavLink class="nav-link" href="/purchaseorders" Match="NavLinkMatch.Prefix">
+                Purchase Orders
+            </NavLink>
+            <NavLink class="nav-link" href="/deliveries" Match="NavLinkMatch.Prefix">
+                Deliveries
+            </NavLink>
+            <NavLink class="nav-link" href="/incidents" Match="NavLinkMatch.Prefix">
+                Incidents
+            </NavLink>
+        </AuthorizeView>
+    </nav>
 
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="vendors" Match="NavLinkMatch.Prefix">
-                        Vendors
-                    </NavLink>
-                </li>
+    <div class="sidebar-heading">Admin</div>
+    <nav class="nav nav-pills flex-column">
+        <AuthorizeView Roles="Admin">
+            <NavLink class="nav-link" href="/scoring-config" Match="NavLinkMatch.Prefix">
+                Scoring Config
+            </NavLink>
+        </AuthorizeView>
+    </nav>
 
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="purchaseorders" Match="NavLinkMatch.Prefix">
-                        Purchase Orders
-                    </NavLink>
-                </li>
-
-                <li class="nav-item">
-                    <NavLink class="nav-link" href="incidents" Match="NavLinkMatch.Prefix">
-                        Incidents
-                    </NavLink>
-                </li>
-
-            </ul>
-        </div>
+    <div class="mt-auto pt-3">
+        <nav class="nav nav-pills flex-column">
+            <NavLink class="nav-link" href="/auth/logout" Match="NavLinkMatch.Prefix">
+                Logout
+            </NavLink>
+        </nav>
     </div>
-</nav>
+</aside>
 
 <style>
-    /* Active link highlight */
-    .nav-link.active {
-        font-weight: 600;
-        border-bottom: 2px solid #0d6efd; /* Bootstrap primary */
-        color: #0d6efd !important;
+    .sidebar {
+        width: 260px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        padding: 1rem 0.75rem;
+        overflow-y: auto;
     }
 
-    /* Hover effect */
-    .nav-link:hover {
-        color: #0d6efd !important;
+    .brand {
+        color: rgba(255, 255, 255, 0.95);
+        font-weight: 700;
         text-decoration: none;
+        display: block;
+        padding: 0.25rem 0.5rem 1rem;
     }
 
-    /* Navbar brand hover */
-    .navbar-brand:hover {
+    .sidebar-heading {
+        color: rgba(255, 255, 255, 0.65);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin: 1rem 0 0.5rem;
+        padding: 0 0.5rem;
+    }
+
+    .sidebar .nav-link {
+        color: rgba(255, 255, 255, 0.85);
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        margin: 0.15rem 0;
+    }
+
+    .sidebar .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.08);
         color: #ffffff;
-        opacity: 0.85;
+    }
+
+    .sidebar .nav-link.active {
+        background-color: #0d6efd;
+        color: #ffffff;
+    }
+    .sidebar .nav-pills .nav-link {
+        background: transparent;
     }
 </style>

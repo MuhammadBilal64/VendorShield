@@ -1,0 +1,26 @@
+@page "/auth/access-denied"
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
+
+@inject NavigationManager NavigationManager
+
+<h3 class="page-title mb-3">Access Denied</h3>
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <p class="text-muted mb-4">
+            You don’t have permission to view this page.
+        </p>
+        <div>
+            <button class="btn btn-primary" @onclick="GoHome">
+                Go to Dashboard
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private void GoHome() => NavigationManager.NavigateTo("/");
+}
+

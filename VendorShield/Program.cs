@@ -15,6 +15,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<IVendorDAL, VendorDAL>();
 builder.Services.AddScoped<IVendorService, VendorService>();
+builder.Services.AddScoped<IPurchaseOrderDAL, PurchaseOrderDAL>();
+builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+builder.Services.AddScoped<IDeliveryDAL, DeliveryDAL>();
+builder.Services.AddScoped<IDeliveryService, DeliveryService>();
+builder.Services.AddScoped<IIncidentDAL, IncidentDAL>();
+builder.Services.AddScoped<IIncidentService, IncidentService>();
+builder.Services.AddScoped<IScoringDAL, ScoringDAL>();
+builder.Services.AddScoped<IScoringService, ScoringService>();
+builder.Services.AddScoped<IScoringConfigDAL, ScoringConfigDAL>();
+builder.Services.AddScoped<IScoringConfigService, ScoringConfigService>();
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
@@ -36,8 +46,8 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.LoginPath = "/Auth/Login";         
-    options.AccessDeniedPath = "/Auth/AccessDenied"; 
+    options.LoginPath = "/auth/login";
+    options.AccessDeniedPath = "/auth/access-denied";
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
 });
@@ -51,6 +61,9 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 var app = builder.Build();
+
+await SeedRolesAndAdminAsync(app);
+
 app.UseAuthentication();
 app.UseAuthorization();
 // Configure the HTTP request pipeline.
@@ -70,3 +83,19 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+static async Task SeedRolesAndAdminAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+    var roles = new[] { "Admin", "Buyer", "Viewer" };
+    foreach (var role in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            await roleManager.CreateAsync(new IdentityRole(role));
+        }
+    }
+}

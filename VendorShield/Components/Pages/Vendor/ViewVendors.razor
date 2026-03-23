@@ -1,10 +1,15 @@
-﻿@page "/vendor-details/{VendorId:int}"
+@page "/vendor-details/{VendorId:int}"
 @using VendorShield.IService
 @using VendorShield.Model
+@using VendorShield.Utility
 @inject IVendorService VendorService
+@inject IScoringService ScoringService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin,Buyer,Viewer")]
 <h3 class="page-title mb-4">Vendor Details</h3>
 
 <div class="card shadow-sm border-0">
@@ -13,7 +18,8 @@
         @if (vendor == null)
         {
             <div class="text-center py-5 text-muted">
-                Loading vendor details...
+                <div class="spinner-border" role="status" aria-label="Loading"></div>
+                <div class="mt-2">Loading vendor details...</div>
             </div>
         }
         else
@@ -88,6 +94,162 @@
                 </div>
             </div>
 
+            <!-- Timeline + score over time -->
+            <div class="mt-4">
+                <div class="fw-semibold mb-2">Timeline</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="text-muted small mb-2">Recent Purchase Orders</div>
+                        @if (recentPurchaseOrders == null || !recentPurchaseOrders.Any())
+                        {
+                            <div class="text-muted small">No purchase orders yet.</div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>PO</th>
+                                            <th>Date</th>
+                                            <th class="text-end">Expected</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var po in recentPurchaseOrders)
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">@po.PoNumber</td>
+                                                <td>@po.PoTime.ToShortDateString()</td>
+                                                <td class="text-end">
+                                                    @(po.ExpectedDeliveryDate?.ToShortDateString() ?? "N/A")
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="text-muted small mb-2">Recent Deliveries</div>
+                        @if (recentDeliveries == null || !recentDeliveries.Any())
+                        {
+                            <div class="text-muted small">No deliveries yet.</div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>PO</th>
+                                            <th>Date</th>
+                                            <th class="text-end">Delivered</th>
+                                            <th class="text-end">Delay</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var row in recentDeliveries)
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">@row.PoNumber</td>
+                                                <td>@row.ActualDeliveryDate.ToShortDateString()</td>
+                                                <td class="text-end">@row.DeliveredQuantity</td>
+                                                <td class="text-end">
+                                                    @(row.DelayDays.HasValue ? row.DelayDays.Value.ToString() : "N/A")
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="col-md-12">
+                        <div class="text-muted small mb-2">Recent Incidents</div>
+                        @if (recentIncidents == null || !recentIncidents.Any())
+                        {
+                            <div class="text-muted small">No incidents yet.</div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>PO</th>
+                                            <th>Type</th>
+                                            <th>Severity</th>
+                                            <th>Status</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var inc in recentIncidents)
+                                        {
+                                            <tr>
+                                                <td>@inc.IncidentDate.ToShortDateString()</td>
+                                                <td class="fw-semibold">@inc.PoNumber</td>
+                                                <td>@inc.Type</td>
+                                                <td>@inc.Severity</td>
+                                                <td>@inc.Status</td>
+                                                <td style="max-width: 420px;">
+                                                    <span class="text-muted">@Truncate(inc.Description, 80)</span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <hr class="my-4" />
+
+                <div class="fw-semibold mb-2">Score Over Time (Last 3 Periods)</div>
+                @if (scoreHistory == null || !scoreHistory.Any())
+                {
+                    <div class="text-muted small">No scoring history available.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Period</th>
+                                    <th class="text-end">Overall</th>
+                                    <th class="text-end">On-Time</th>
+                                    <th>Risk</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var h in scoreHistory.OrderByDescending(x => x.To))
+                                {
+                                    <tr>
+                                        <td>
+                                            @h.From.ToString("MMM yyyy") - @h.To.ToString("MMM yyyy")
+                                        </td>
+                                        <td class="text-end fw-semibold">@h.OverallScore.ToString("0.0")%</td>
+                                        <td class="text-end">@h.OnTimeScore.ToString("0.0")%</td>
+                                        <td>
+                                            <span class="badge @GetRiskClass(h.RiskScore)">
+                                                @h.RiskLevel
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
             <div class="d-flex justify-content-end">
                 <button class="btn btn-outline-secondary px-4" @onclick="GoBack">
                     Back
@@ -103,6 +265,10 @@
     public int VendorId { get; set; }
 
     private Vendor? vendor;
+    private List<PurchaseOrder>? recentPurchaseOrders;
+    private List<DeliveryTimelineRow>? recentDeliveries;
+    private List<IncidentTimelineRow>? recentIncidents;
+    private List<VendorScoreHistoryItem>? scoreHistory;
 
     protected override async Task OnInitializedAsync()
     {
@@ -112,6 +278,45 @@
         {
             await JSRuntime.InvokeVoidAsync("alert", "Vendor not found!");
             NavigationManager.NavigateTo("/vendors");
+        }
+        else
+        {
+            recentPurchaseOrders = vendor.PurchaseOrders
+                .OrderByDescending(po => po.PoTime)
+                .Take(5)
+                .ToList();
+
+            recentDeliveries = vendor.PurchaseOrders
+                .SelectMany(po => po.Deliveries.Select(d => new DeliveryTimelineRow
+                {
+                    PoNumber = po.PoNumber,
+                    ActualDeliveryDate = d.ActualDeliveryDate,
+                    DeliveredQuantity = d.DeliveredQuantity,
+                    DelayDays = po.ExpectedDeliveryDate.HasValue
+                        ? (int?)(d.ActualDeliveryDate - po.ExpectedDeliveryDate.Value).Days
+                        : null
+                }))
+                .OrderByDescending(r => r.ActualDeliveryDate)
+                .Take(8)
+                .ToList();
+
+            var poNumberById = vendor.PurchaseOrders.ToDictionary(po => po.Id, po => po.PoNumber);
+
+            recentIncidents = vendor.Incidents
+                .OrderByDescending(i => i.IncidentDate)
+                .Take(8)
+                .Select(i => new IncidentTimelineRow
+                {
+                    IncidentDate = i.IncidentDate,
+                    PoNumber = poNumberById.TryGetValue(i.PurchaseOrderId, out var poNum) ? poNum : "N/A",
+                    Type = i.Type,
+                    Severity = i.Severity,
+                    Status = i.Status,
+                    Description = i.Description
+                })
+                .ToList();
+
+            scoreHistory = await ScoringService.CalculateVendorScoreHistoryAsync(VendorId, periods: 3, monthsPerPeriod: 1);
         }
     }
 
@@ -132,5 +337,38 @@
     private void GoBack()
     {
         NavigationManager.NavigateTo("/vendors");
+    }
+
+    private static string Truncate(string? value, int maxLen)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        if (value.Length <= maxLen) return value;
+        return value.Substring(0, maxLen) + "...";
+    }
+
+    private string GetRiskClass(double risk)
+    {
+        // Keep consistent with the rest of the app.
+        if (risk <= 20) return "bg-success";
+        if (risk <= 50) return "bg-warning text-dark";
+        return "bg-danger";
+    }
+
+    private class DeliveryTimelineRow
+    {
+        public string PoNumber { get; set; } = string.Empty;
+        public DateTime ActualDeliveryDate { get; set; }
+        public int DeliveredQuantity { get; set; }
+        public int? DelayDays { get; set; }
+    }
+
+    private class IncidentTimelineRow
+    {
+        public DateTime IncidentDate { get; set; }
+        public string PoNumber { get; set; } = string.Empty;
+        public IncidentType Type { get; set; }
+        public IncidentSeverity Severity { get; set; }
+        public IncidentStatus Status { get; set; }
+        public string Description { get; set; } = string.Empty;
     }
 }

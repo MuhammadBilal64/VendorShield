@@ -1,0 +1,255 @@
+@page "/incidents"
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin,Buyer")]
+
+@using VendorShield.IService
+@using VendorShield.Model
+@using VendorShield.Utility
+@inject IVendorService VendorService
+@inject IIncidentService IncidentService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<h3 class="page-title mb-4">Incidents</h3>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="fw-semibold">Incident List</div>
+            <button class="btn btn-primary px-3" @onclick="GoToCreate">
+                + Add Incident
+            </button>
+        </div>
+
+        @if (incidents == null)
+        {
+            <div class="text-center py-5 text-muted">
+                <div class="spinner-border" role="status" aria-label="Loading"></div>
+                <div class="mt-2">Loading incidents...</div>
+            </div>
+        }
+        else
+        {
+            var visibleIncidents = GetFilteredIncidents().ToList();
+
+            <div class="row g-2 mb-3">
+                <div class="col-md-3">
+                    <div class="text-muted small mb-1">Vendor</div>
+                    <select class="form-select" @bind="vendorFilter">
+                        <option value="all">All Vendors</option>
+                        @if (vendors != null)
+                        {
+                            @foreach (var v in vendors)
+                            {
+                                <option value="@v.Id">@v.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <div class="text-muted small mb-1">Severity</div>
+                    <select class="form-select" @bind="severityFilter">
+                        <option value="all">All Severities</option>
+                        <option value="@IncidentSeverity.Low">Low</option>
+                        <option value="@IncidentSeverity.Medium">Medium</option>
+                        <option value="@IncidentSeverity.High">High</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <div class="text-muted small mb-1">Status</div>
+                    <select class="form-select" @bind="statusFilter">
+                        <option value="all">All Statuses</option>
+                        <option value="@IncidentStatus.Open">Open</option>
+                        <option value="@IncidentStatus.InProgress">InProgress</option>
+                        <option value="@IncidentStatus.Resolved">Resolved</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-muted small mb-1">Type</div>
+                    <select class="form-select" @bind="typeFilter">
+                        <option value="all">All Types</option>
+                        <option value="@IncidentType.DeliveryDelay">Late</option>
+                        <option value="@IncidentType.QualityIssue">Quality</option>
+                        <option value="@IncidentType.CommunicationProblem">Documentation</option>
+                        <option value="@IncidentType.Other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            @if (!visibleIncidents.Any())
+            {
+                <div class="text-center py-5 text-muted">
+                    No incidents found for the selected filters.
+                </div>
+            }
+            else
+            {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Vendor</th>
+                            <th>PO</th>
+                            <th>Type</th>
+                            <th>Severity</th>
+                            <th>Status</th>
+                            <th>Description</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inc in visibleIncidents)
+                        {
+                            <tr>
+                                <td>@inc.IncidentDate.ToShortDateString()</td>
+                                <td>@inc.Vendor?.Name</td>
+                                <td>@inc.PurchaseOrder?.PoNumber</td>
+                                <td>
+                                    <span class="badge @GetIncidentTypeClass(inc.Type)">
+                                        @GetIncidentTypeLabel(inc.Type)
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge @GetIncidentSeverityClass(inc.Severity)">
+                                        @inc.Severity
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge @GetIncidentStatusClass(inc.Status)">
+                                        @inc.Status
+                                    </span>
+                                </td>
+                                <td style="max-width: 360px;">
+                                    <span class="text-muted">@Truncate(inc.Description, 60)</span>
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-info me-1" @onclick="() => GoToEdit(inc.Id)">
+                                        Edit
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(inc.Id)">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<Incident>? incidents;
+    private List<Vendor>? vendors;
+
+    // Filter values: "all" or enum name / numeric string.
+    private string vendorFilter = "all";
+    private string severityFilter = "all";
+    private string statusFilter = "all";
+    private string typeFilter = "all";
+
+    protected override async Task OnInitializedAsync()
+    {
+        vendors = await VendorService.GetAllVendorsAsync();
+        incidents = await IncidentService.GetAllIncidentsAsync();
+    }
+
+    private void GoToCreate() => NavigationManager.NavigateTo("/incidents/create");
+    private void GoToEdit(int id) => NavigationManager.NavigateTo($"/incidents/edit/{id}");
+
+    private async Task ConfirmDelete(int id)
+    {
+        var ok = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this incident?");
+        if (!ok) return;
+
+        var success = await IncidentService.DeleteIncidentAsync(id);
+        if (!success) return;
+
+        incidents = await IncidentService.GetAllIncidentsAsync();
+    }
+
+    private IEnumerable<Incident> GetFilteredIncidents()
+    {
+        if (incidents == null) return Enumerable.Empty<Incident>();
+
+        int? vendorId = vendorFilter == "all"
+            ? null
+            : (int.TryParse(vendorFilter, out var vid) ? vid : null);
+
+        IncidentSeverity? severity = severityFilter == "all"
+            ? null
+            : (Enum.TryParse<IncidentSeverity>(severityFilter, out var s) ? s : null);
+
+        IncidentStatus? status = statusFilter == "all"
+            ? null
+            : (Enum.TryParse<IncidentStatus>(statusFilter, out var st) ? st : null);
+
+        IncidentType? type = typeFilter == "all"
+            ? null
+            : (Enum.TryParse<IncidentType>(typeFilter, out var t) ? t : null);
+
+        return incidents.Where(inc =>
+            (!vendorId.HasValue || inc.VendorId == vendorId.Value) &&
+            (!severity.HasValue || inc.Severity == severity.Value) &&
+            (!status.HasValue || inc.Status == status.Value) &&
+            (!type.HasValue || inc.Type == type.Value));
+    }
+
+    private string GetIncidentSeverityClass(IncidentSeverity severity) =>
+        severity switch
+        {
+            IncidentSeverity.Low => "bg-success",
+            IncidentSeverity.Medium => "bg-warning text-dark",
+            IncidentSeverity.High => "bg-danger",
+            _ => "bg-secondary"
+        };
+
+    private string GetIncidentStatusClass(IncidentStatus status) =>
+        status switch
+        {
+            IncidentStatus.Open => "bg-danger",
+            IncidentStatus.InProgress => "bg-warning text-dark",
+            IncidentStatus.Resolved => "bg-success",
+            _ => "bg-secondary"
+        };
+
+    private string GetIncidentTypeClass(IncidentType type) =>
+        type switch
+        {
+            IncidentType.DeliveryDelay => "badge-orange",
+            IncidentType.QualityIssue => "bg-danger",
+            IncidentType.CommunicationProblem => "bg-primary",
+            IncidentType.Other => "bg-secondary",
+            _ => "bg-secondary"
+        };
+
+    private string GetIncidentTypeLabel(IncidentType type) =>
+        type switch
+        {
+            IncidentType.DeliveryDelay => "Late",
+            IncidentType.QualityIssue => "Quality",
+            IncidentType.CommunicationProblem => "Documentation",
+            IncidentType.Other => "Other",
+            _ => type.ToString()
+        };
+
+    private static string Truncate(string? value, int maxLen)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        if (value.Length <= maxLen) return value;
+        return value.Substring(0, maxLen) + "...";
+    }
+}
+
+<style>
+    .badge-orange {
+        background-color: #fd7e14;
+        color: #ffffff;
+    }
+</style>
+

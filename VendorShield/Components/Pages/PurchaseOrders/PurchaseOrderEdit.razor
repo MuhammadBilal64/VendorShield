@@ -1,0 +1,195 @@
+@page "/purchaseorders/edit/{PurchaseOrderId:int}"
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin,Buyer")]
+
+@using VendorShield.IService
+@using VendorShield.Model
+@using VendorShield.Utility
+@inject IVendorService VendorService
+@inject IPurchaseOrderService PurchaseOrderService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<h3 class="page-title mb-4">Edit Purchase Order</h3>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+        @if (vendors == null || model == null)
+        {
+            <div class="text-center py-5 text-muted">
+                <div class="spinner-border" role="status" aria-label="Loading"></div>
+                <div class="mt-2">Loading purchase order...</div>
+            </div>
+        }
+        else if (!vendors.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                No vendors available.
+            </div>
+        }
+        else
+        {
+            <EditForm Model="model" OnValidSubmit="HandleSubmit">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Vendor</label>
+                        <InputSelect class="form-select" @bind-Value="model.VendorId">
+                            @foreach (var v in vendors)
+                            {
+                                <option value="@v.Id" selected="@(v.Id == model.VendorId)">@v.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">PO Number</label>
+                        <InputText class="form-control" @bind-Value="model.PoNumber" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">PO Date</label>
+                        <InputDate class="form-control" @bind-Value="model.PoTime" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Expected Delivery Date</label>
+                        <InputDate class="form-control" @bind-Value="model.ExpectedDeliveryDate" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Status</label>
+                    <InputSelect class="form-select" @bind-Value="model.Status">
+                        @foreach (var s in Enum.GetValues(typeof(PurchaseOrderStatus)).Cast<PurchaseOrderStatus>())
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <hr />
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-semibold">PO Lines</div>
+                    <button class="btn btn-outline-primary btn-sm" type="button" @onclick="AddLine">
+                        + Add Line
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th class="text-end" style="width: 120px;">Qty</th>
+                                <th class="text-end" style="width: 160px;">Unit Price</th>
+                                <th class="text-end" style="width: 160px;">Line Total</th>
+                                <th style="width: 80px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < model.Lines.Count; i++)
+                            {
+                                var line = model.Lines[i];
+                                <tr>
+                                    <td>
+                                        <InputText class="form-control form-control-sm" @bind-Value="line.ItemName" />
+                                    </td>
+                                    <td class="text-end">
+                                        <InputNumber class="form-control form-control-sm text-end" @bind-Value="line.Quantity" />
+                                    </td>
+                                    <td class="text-end">
+                                        <InputNumber class="form-control form-control-sm text-end" @bind-Value="line.UnitPrice" />
+                                    </td>
+                                    <td class="text-end fw-semibold">
+                                        @line.LineTotal.ToString("0.00")
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-danger" type="button" @onclick="() => RemoveLine(i)" disabled="@(model.Lines.Count <= 1)">
+                                            Remove
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-end mt-3 gap-2">
+                    <button class="btn btn-outline-secondary" type="button" @onclick="HandleCancel">
+                        Cancel
+                    </button>
+                    <button class="btn btn-success" type="submit">
+                        Save Changes
+                    </button>
+                </div>
+            </EditForm>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int PurchaseOrderId { get; set; }
+
+    private List<Vendor>? vendors;
+    private PurchaseOrder? model;
+
+    protected override async Task OnInitializedAsync()
+    {
+        vendors = await VendorService.GetAllVendorsAsync();
+        model = await PurchaseOrderService.GetPurchaseOrderByIdAsync(PurchaseOrderId);
+
+        if (model == null)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Purchase order not found!");
+            NavigationManager.NavigateTo("/purchaseorders");
+        }
+    }
+
+    private void AddLine()
+    {
+        if (model == null) return;
+
+        model.Lines.Add(new PurchaseOrderLine
+        {
+            Quantity = 1,
+            UnitPrice = 0m
+        });
+    }
+
+    private void RemoveLine(int index)
+    {
+        if (model == null) return;
+        if (model.Lines.Count <= 1) return;
+        model.Lines.RemoveAt(index);
+    }
+
+    private async Task HandleCancel()
+    {
+        var ok = await JSRuntime.InvokeAsync<bool>(
+            "confirm",
+            "Discard changes and return to the purchase order list?");
+
+        if (ok)
+            NavigationManager.NavigateTo("/purchaseorders");
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (model == null) return;
+
+        var success = await PurchaseOrderService.UpdatePurchaseOrderAsync(model);
+        if (!success)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Failed to update purchase order. Please check vendor and PO lines.");
+            return;
+        }
+
+        NavigationManager.NavigateTo("/purchaseorders");
+    }
+}
+
